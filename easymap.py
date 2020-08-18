@@ -738,7 +738,7 @@ def test_new_addr():
         count = count + 1
     print(ave1/count,ave2/count)
 
-test_new_addr()
+# test_new_addr()
     # count = count + 1
 # test_feabbnum(0xffffffff811cc210)
 # test_feabbnum(0xffffffff811cc210)
