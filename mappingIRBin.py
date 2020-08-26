@@ -28,7 +28,7 @@ class mapping(object):
         if db_config is None:
             db_config = db_config = this_path + '/static_info.config.json'
         if bin_ida_server is None:
-            bin_ida_server = "http://114.212.84.46:12345"
+            bin_ida_server = "http://114.212.85.187:12345"
         if bin_name is None:
             bin_name = "~/xujianhao/checkCF/tracing_kernel/linux-5.7.0-rc5/vmlinux "
 

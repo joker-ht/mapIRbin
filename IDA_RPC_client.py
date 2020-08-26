@@ -2,7 +2,7 @@ import networkx as nx
 import xmlrpc.client
 # xmlrpclib.Marshaller.dispatch[type(0L)] = lambda _, v, w: w("<value><i8>%d</i8></value>" % v)
 
-host = "http://114.212.84.46:12345"
+host = "http://114.212.85.187:12345"
 
 def get_CFG_edges(inst_addr, bin_ida_server=None):
     if bin_ida_server is None:

@@ -419,8 +419,13 @@ def test(addr):
         intlabel = []
         intaddr = []
         binret = 0
+        # print(111)
+        # print(testmap.IR_graphwithfea.nodes.keys())
         for node in testmap.IR_graphwithfea.nodes.keys():
+            # print(1)
+            # print(node)
             intlabel.append(int(node))
+        # print(testmap.bin_graphwithfea.nodes.keys())
         for node in testmap.bin_graphwithfea.nodes.keys():
             intaddr.append(int(node,16))
             if 'retn' in testmap.bin_graphwithfea.nodes[node]['fea']:
@@ -436,7 +441,9 @@ def test(addr):
         mapped_binnode.setdefault(binstart,[]).append(IRstart)
         mapped_binnode.setdefault(binret,[]).append(IRret)
 
-
+        # test code
+        # for node in mapped_IRnode.items():
+        #     print(node)
         # print(max(intlabel),min(intlabel))
         # print(max(intaddr),min(intaddr))
 
@@ -462,9 +469,9 @@ def test(addr):
             # print ('\n')
         # for node in testmap.IR_graphwithfea.nodes:
         #     print(node,testmap.IR_graphwithfea.nodes[node]['fea'])
-        # for node in mapped_IRnode.items():
-        #     print (node)
-        #     print ('\n')
+        for node in mapped_IRnode.items():
+            print (node)
+            print ('\n')
         # len1 = 30 - len(testmap.func_name)
         # noom = ' '
         # for i in range(0,len1):
@@ -534,14 +541,55 @@ def test(addr):
         count2 = 0
         count3 = 0
         for node in list1:
+            # print(node)
             dict = {}
             dict1 = {}
             dict2 = {}
             flag1 = 0
             flag2 = 0
             
+            # list2 = mapped_IRnode[node]
+            # if node == '341':
+                # print(1,mapped_IRnode['341'])
+            # print(1)
+            # print(mapped_IRnode['142'])
+            count111 = 0
+            for binnode in mapped_IRnode[node]:
+                for succsnode in testmap.bin_graphwithfea.successors(binnode):
+                    if not succsnode in mapped_binnode.keys():
+                        if map_two_BB(testmap.IR_graphwithfea.nodes[node]['fea'],testmap.bin_graphwithfea.nodes[succsnode]['fea'])\
+                            and len(map_two_BB(testmap.IR_graphwithfea.nodes[node]['fea'],testmap.bin_graphwithfea.nodes[succsnode]['fea'])) ==\
+                            len(testmap.bin_graphwithfea.nodes[succsnode]['fea']) \
+                            and len([fea for fea in testmap.IR_graphwithfea.nodes[node]['fea'] if fea in  map_two_BB(testmap.IR_graphwithfea.nodes[node]['fea'],testmap.bin_graphwithfea.nodes[succsnode]['fea'])])\
+                            > len([fea for fea in testmap.bin_graphwithfea.nodes[binnode]['fea'] if fea in  map_two_BB(testmap.IR_graphwithfea.nodes[node]['fea'],testmap.bin_graphwithfea.nodes[succsnode]['fea'])]):
+                            if len(testmap.bin_graphwithfea.nodes[succsnode]['fea']) == 1 and map_two_BB(testmap.IR_graphwithfea.nodes[node]['fea'],\
+                                testmap.bin_graphwithfea.nodes[succsnode]['fea']) == ['cmp 2 reg']:
+                                count111 += 1
+                                # print('count111',node)
+                                if count111 < len(testmap.IR_graphwithfea.nodes[node]['fea']):
+                                # print(succsnode)
+                                    mapped_IRnode[node].append(succsnode)
+
+                                    mapped_binnode.setdefault(succsnode,[]).append(node)
+                                else:
+                                    break
+                            else:
+                                mapped_IRnode[node].append(succsnode)
+                                mapped_binnode.setdefault(succsnode,[]).append(node)
+            # if node == '627':
+            #     print ('627',count111,mapped_IRnode[node])
+            # if node == '341':
+            #     print(2,mapped_IRnode['341'])
+            #     print(list2)
+            # if node == '639':
+            #         print(node,node1,dict.setdefault('647',[]),mapped_IRnode[node])
+            unmappednode1 = 0
+            totalnode1 = 0
+            for node1 in testmap.IR_graphwithfea.successors(node):
+                totalnode1 += 1
+                if not node1 in mapped_IRnode.keys():
+                     unmappednode1 = unmappednode1 + 1
             for node1 in testmap.IR_graphwithfea.successors(node):       
-                
                 # if testmap.IR_graphwithfea.nodes[node]['used'] == 1:
                 #     break
                 # if not node1 in mapped_IRnode.keys():
@@ -549,57 +597,91 @@ def test(addr):
                 # if node == '198':
                 #     print(node1)
                 #     count3 = count3 + 1
+                unmappednode2 = 0
+                totalnode2 = 0
                 for binmapped in mapped_IRnode[node]:
-                    # if node == '198':
-                    #     count1 = count1 + 1
+                    totalnode2 += 1
+                    for node2 in testmap.bin_graphwithfea.successors(binmapped):
+                        if not node2 in mapped_binnode.keys():
+                            unmappednode2 = unmappednode2 + 1
+                for binmapped in mapped_IRnode[node]:
+                    # if node == '341':
                     #     print('111111')
                     #     print(mapped_IRnode[node])
                     #     print(binmapped,testmap.bin_graphwithfea.nodes[binmapped]['fea'])
                     #     print('\n')
-                    if map_two_BB(testmap.IR_graphwithfea.nodes[node1]['fea'],testmap.bin_graphwithfea.nodes[binmapped]['fea'])\
-                                and len(map_two_BB(testmap.IR_graphwithfea.nodes[node1]['fea'],testmap.bin_graphwithfea.nodes[binmapped]['fea'])) ==\
-                                    len(testmap.IR_graphwithfea.nodes[node1]['fea']):
-                        if not node1 in mapped_IRnode.keys():
-                            dict.setdefault(node1,[]).append(binmapped)
-
+                    if totalnode2 == 1:
+                        # if node1(succs of irnode) map binnode(binnode which maps irnode)
+                        if map_two_BB(testmap.IR_graphwithfea.nodes[node1]['fea'],testmap.bin_graphwithfea.nodes[binmapped]['fea'])\
+                            and len(map_two_BB(testmap.IR_graphwithfea.nodes[node1]['fea'],testmap.bin_graphwithfea.nodes[binmapped]['fea'])) ==\
+                            len(testmap.IR_graphwithfea.nodes[node1]['fea']) and len(testmap.bin_graphwithfea.nodes[binmapped]['fea']) > \
+                            len(testmap.IR_graphwithfea.nodes[node1]['fea']):
+                            if not node1 in mapped_IRnode.keys():
+                                dict.setdefault(node1,[]).append(binmapped)
+                                # if node1 == '647':
+                                #     print(binmapped)
                     for node2 in testmap.bin_graphwithfea.successors(binmapped):
                 
                         if not node2 in mapped_binnode.keys():
                             # print('succs',node,node1,node2)
-                            # if node == '198':
-                            #     count2 = count2 + 1
-                            #     print(node2,testmap.bin_graphwithfea.nodes[node2]['fea'])
+                            # if node == '341':
+                            #     print(node,node1,binmapped,node2,testmap.bin_graphwithfea.nodes[node2]['fea'])
                             #     print('\\')
-                            if map_two_BB(testmap.IR_graphwithfea.nodes[node]['fea'],testmap.bin_graphwithfea.nodes[node2]['fea'])\
-                                and len(map_two_BB(testmap.IR_graphwithfea.nodes[node]['fea'],testmap.bin_graphwithfea.nodes[node2]['fea'])) ==\
-                                    len(testmap.bin_graphwithfea.nodes[node2]['fea']):
-                                if not node2 in dict.setdefault(node,[]):
-                                    dict.setdefault(node,[]).append(node2)
+                            # if map_two_BB(testmap.IR_graphwithfea.nodes[node]['fea'],testmap.bin_graphwithfea.nodes[node2]['fea'])\
+                            #     and len(map_two_BB(testmap.IR_graphwithfea.nodes[node]['fea'],testmap.bin_graphwithfea.nodes[node2]['fea'])) ==\
+                            #         len(testmap.bin_graphwithfea.nodes[node2]['fea']):
+                            #     if not node2 in dict.setdefault(node,[]):
+                            #         dict.setdefault(node,[]).append(node2)
                              
                                 
                             if map_two_BB(testmap.IR_graphwithfea.nodes[node1]['fea'],testmap.bin_graphwithfea.nodes[node2]['fea']):
                                 if not node1 in mapped_IRnode.keys():
                                     dict.setdefault(node1,[]).append(node2)
                                     flag1 = 1 
+                                    continue
                             
                             if len(testmap.IR_graphwithfea.nodes[node1]['fea']) == len(testmap.bin_graphwithfea.nodes[node2]['fea']) == 0:
                                 if not node1 in mapped_IRnode.keys():
                                     dict1.setdefault(node1,[]).append(node2)
-
+                                    continue
+                            
+                            if node1 not in mapped_IRnode.keys() and unmappednode2 == unmappednode1 == 1 and \
+                                len(testmap.IR_graphwithfea.nodes[node1]['fea']) <= 2 and len(testmap.bin_graphwithfea.nodes[node2]['fea']) <= 2 and \
+                                totalnode1 >= 2 and totalnode2 >=2:
+                                print('new rule',node,node1,node2)
+                                dict1.setdefault(node1,[]).append(node2)
+                            
                 
+                # if node == '639':
+                #     print(node,node1,dict.setdefault(node1,[]),mapped_IRnode[node])
+                #     print(dict)
                 if len(dict.setdefault(node1,[])) + len(dict.setdefault(node,[])) > 0:
                     if len(dict.setdefault(node1,[])) == 1:
                         mapped_IRnode.setdefault(node1,[]).append(dict[node1][0])
                         list1.append(node1)
                         mapped_binnode.setdefault(dict[node1][0],[]).append(node1)
+                        # if node == '341':
+                        #     print(node1,dict[node1])
                         # print(node,'successors')
                         # print(map_two_BB(testmap.IR_graphwithfea.nodes[node1]['fea'],testmap.bin_graphwithfea.nodes[dict[node1][0]]['fea']))
                         # print(node1,dict[node1][0])
+                    if len(dict.setdefault(node1,[])) > 1:
+                        f = 0
+                        default = dict.setdefault(node1,[])[0]
+                        for n in dict[node1]:
+                            if n != default:
+                                f = 1
+                        if f == 0:
+                            mapped_IRnode.setdefault(node1,[]).append(dict[node1][0])
+                            list1.append(node1)
+                            mapped_binnode.setdefault(dict[node1][0],[]).append(node1)
                     if len(dict.setdefault(node,[])) >= 1:
                         for nodebin in dict.setdefault(node,[]):
                             if not nodebin in mapped_IRnode.setdefault(node,[]):
                                 mapped_IRnode.setdefault(node,[]).append(nodebin)
                                 mapped_binnode.setdefault(nodebin,[]).append(node)
+                                # if node == '341':
+                                #     print(node,nodebin)
                         # print(node,'successors')
                         # print(map_two_BB(testmap.IR_graphwithfea.nodes[node]['fea'],testmap.bin_graphwithfea.nodes[dict[node][len(dict[node])-1]]['fea']))
                         # print(node,dict[node])
@@ -618,20 +700,25 @@ def test(addr):
                     
                 for binmapped in mapped_IRnode[node]:
                     if map_two_BB(testmap.IR_graphwithfea.nodes[node3]['fea'],testmap.bin_graphwithfea.nodes[binmapped]['fea'])\
-                                and len(map_two_BB(testmap.IR_graphwithfea.nodes[node3]['fea'],testmap.bin_graphwithfea.nodes[binmapped]['fea'])) ==\
-                                    len(testmap.IR_graphwithfea.nodes[node3]['fea']):
+                        and len(map_two_BB(testmap.IR_graphwithfea.nodes[node3]['fea'],testmap.bin_graphwithfea.nodes[binmapped]['fea'])) ==\
+                        len(testmap.IR_graphwithfea.nodes[node3]['fea']):
                         if not node3 in mapped_IRnode.keys():
                             dict.setdefault(node3,[]).append(binmapped)
                     for node4 in testmap.bin_graphwithfea.predecessors(binmapped):
+                        unmappednode4 = 0
                         if not node4 in mapped_binnode.keys():
                             # print('pred',node,node4)
-                            
+                            # 8.24 if fea in binnodepred,in irnode,not in binnode
                             if map_two_BB(testmap.IR_graphwithfea.nodes[node]['fea'],testmap.bin_graphwithfea.nodes[node4]['fea'])\
+                                and len([fea for fea in testmap.IR_graphwithfea.nodes[node]['fea'] if fea in map_two_BB(testmap.IR_graphwithfea.nodes[node]['fea'],testmap.bin_graphwithfea.nodes[node4]['fea'])])\
+                                > len([fea for fea in testmap.bin_graphwithfea.nodes[node4]['fea'] if fea in map_two_BB(testmap.IR_graphwithfea.nodes[node]['fea'],testmap.bin_graphwithfea.nodes[node4]['fea'])]) \
                                 and len(map_two_BB(testmap.IR_graphwithfea.nodes[node]['fea'],testmap.bin_graphwithfea.nodes[node4]['fea'])) ==\
-                                    len(testmap.bin_graphwithfea.nodes[node4]['fea']):
+                                len(testmap.bin_graphwithfea.nodes[node4]['fea']):
                                 if  not node4 in dict.setdefault(node,[]):
                                     dict.setdefault(node,[]).append(node4)
-                                
+                                    # print(node,binmapped,node4)
+                                    # print(testmap.bin_graphwithfea.nodes[binmapped]['fea'])
+                                    # print(map_two_BB(testmap.IR_graphwithfea.nodes[node]['fea'],testmap.bin_graphwithfea.nodes[node4]['fea']))
                                 
                             if map_two_BB(testmap.IR_graphwithfea.nodes[node3]['fea'],testmap.bin_graphwithfea.nodes[node4]['fea']):
                                 if not node3 in mapped_IRnode.keys():
@@ -644,7 +731,7 @@ def test(addr):
                             if len(testmap.IR_graphwithfea.nodes[node3]['fea']) == len(testmap.bin_graphwithfea.nodes[node4]['fea']) == 0:
                                 if not node3 in mapped_IRnode.keys():
                                     dict2.setdefault(node3,[]).append(node4)
-            
+
                 if len(dict.setdefault(node3,[])) + len(dict.setdefault(node,[])) > 0:
                     if len(dict.setdefault(node3,[])) == 1:
                         mapped_IRnode.setdefault(node3,[]).append(dict[node3][0])
@@ -659,7 +746,10 @@ def test(addr):
                     mapped_IRnode.setdefault(node3,[]).append(dict2[node3][0])
                     list1.append(node3)
                     mapped_binnode.setdefault(dict2[node3][0],[]).append(node3)
-            
+        # test code
+        # print('mapafteredge')
+        for node in mapped_IRnode.items():
+            print(node)
             # print(node,dict)
         # print(count3,count1,count2)
     map_after_edge()
@@ -704,10 +794,11 @@ def test(addr):
         B.layout('dot')
 
         B.draw( this_path + '/graphs/IR-' + testmap.func_name + '.png')
-    # draw_IR_bin()
+    draw_IR_bin()
 
-    return(len(mapped_IRnode.keys())/len(testmap.IR_graphwithfea.nodes),len(mapped_binnode.keys())/len(testmap.bin_graphwithfea.nodes))
-
+    # print(mapped_binnode.keys())
+    return(len(mapped_IRnode.keys())/len(testmap.IR_graphwithfea.nodes),len(mapped_binnode.keys())/len(testmap.bin_graphwithfea.nodes),mapped_IRnode,testmap.func_name)
+    
 # def test_feabbnum(addr):
 #     featest = easymap(addr)
 #     count = 0
@@ -739,6 +830,86 @@ def test_new_addr():
     print(ave1/count,ave2/count)
 
 # test_new_addr()
+
+def test_secheck():
+
+    with open('/home/seclab/dingzhu/sechk-slub-addr.txt','r') as f:
+        addrs = f.readlines()
+    ave1 = 0
+    ave2 = 0
+    count = 0
+    for addr in addrs:
+        # print (count)
+        if addr.startswith('0x'):
+            irpro,binpro,_,_ = test(int(addr,16))
+            ave1 = ave1 + irpro
+            ave2 = ave2 + binpro
+            count = count + 1
+    print(ave1/count,ave2/count)
+
+# test_secheck()
+
+def test_proofsechk():
+    with open('/home/seclab/dingzhu/securitychq','r') as f:
+        addrs = f.readlines()
+    ave1 = 0
+    ave2 = 0
+    mappedsechck = 0
+    count = 0
+    label = 0
+    for addr in addrs:
+        # print (count)
+        if addr.startswith('0x'):
+            irpro,binpro,mapped_IRnode,func_name = test(int(addr,16))
+        else:
+            count = count + 1
+            funcname = addr.split('%')[0]
+            label = addr.split('%')[1]
+            label1 = label.strip('\n')
+            # print(label,len(label))
+            # print(len(label1))
+            if funcname == func_name:
+                if label1 in mapped_IRnode.keys():
+                    # print(label)
+                    mappedsechck = mappedsechck + 1
+    print(mappedsechck,count,mappedsechck/count)
+
+
+    # print(ave1/count,ave2/count)
+
+# test_proofsechk()
+
+def test_821(addrfile,sechkfile):
+    count = 0
+    chkcount = 0
+    ave1 = 0
+    ave2 = 0
+    amount = 0
+    with open(addrfile,'r') as f:
+        addrs = f.readlines()
+    with open(sechkfile,'r') as f:
+        funclabel = f.readlines()
+    count = len(funclabel)
+    funcnames = []
+    # for node in funclabel:
+    #     funcnames.append(node.split('%')[0])
+    for addr in addrs:
+        irpro,binpro,mapped_IRnode,func_name = test(int(addr,16))
+        ave1 = irpro + ave1
+        ave2 = binpro + ave2
+        amount = amount + 1
+        for node in funclabel:
+            funcname = node.split('%')[0]
+            label = node.split('%')[1].strip('\n')
+            if func_name == funcname:
+                if label in mapped_IRnode.keys():
+                    chkcount = chkcount + 1
+    print(ave1/amount,ave2/amount)
+    print('sechk: ',chkcount,count,chkcount/count)
+
+# test_821('/home/seclab/dingzhu/sechk-namei-addr.txt','/home/seclab/dingzhu/sechk-namei.txt')
+# test_821('/home/seclab/dingzhu/sechk-inline-addr.txt','/home/seclab/dingzhu/sechk-inode.txt')
+
     # count = count + 1
 # test_feabbnum(0xffffffff811cc210)
 # test_feabbnum(0xffffffff811cc210)
@@ -751,7 +922,7 @@ def test_new_addr():
 # patn_openat
 # test(0xffffffff8121b4bb)
 # unwind_next_frame
-# test(0xffffffff8105cc6d)
+test(0xffffffff8105cc6d)
 # get_unmapped_area
 # test(0xffffffff811cc89c)
 # getname_flags
@@ -761,9 +932,22 @@ def test_new_addr():
 # test(0xffffffff812205b0)
 # free_debug_processing
 # test(0xffffffff811ff60e)
+
+# error test
+# test(0xffffffff8121f510)
+# test(0xffffffff811fbc80)
+# test(0xffffffff811c2a10)(该函数在bin只有一个BB，导致通过edge构造边时该图为空)
+# test(0xffffffff811c1340)(该函数在bin只有一个BB，导致通过edge构造边时该图为空)
+# test(0xffffffff811c3000)
+# test(0xffffffff812d3d40)(ida解析得到的函数名有问题)
+# test(0xffffffff812d52c0)
+# test(ext4_iomap_end)(IR中只有一个BB，bin也是)
 # def map_graph(IR_graph,bin_graph):
 #     #map start from the first block
 #     mapwithfea = easymap(addr)
 #     def map_graph_from_node(irnode,binnode):
         
 
+# testmap1 = easymap(0xffffffff812d52c0)
+# print(testmap1.IR_graphwithfea.nodes.keys())
+# print(testmap1.func_name)
