@@ -14,7 +14,7 @@ real_f_path = os.path.realpath(__file__)
 this_path = real_f_path[:real_f_path.rfind('/')]
 db_config = this_path + '/static_info.config.json'
 
-#if one fea in BB1 is also in  
+#if BB1 and BB2 have intersection  
 def map_two_BB(IR_BB_Fea,bin_BB_Fea):
     map_fea = []
     if IR_BB_Fea and bin_BB_Fea:
@@ -26,37 +26,40 @@ def map_two_BB(IR_BB_Fea,bin_BB_Fea):
         return False
 
 
-# def map_edge(from_bb,to)
-
 class easymap(mapbb.mapping):
     def __init__(self, inst_addr, db_config = None, bin_ida_server = None, bin_name = None):
-        # # can be initialized by an addr
-        
-        # # default config
-        # if db_config is None:
-        #     db_config = db_config = this_path + '/static_info.config.json'
-        # if bin_ida_server is None:
-        #     bin_ida_server = "http://114.212.81.134:12345"
-        # if bin_name is None:
-        #     bin_name = "~/xujianhao/checkCF/tracing_kernel/linux-5.7.0-rc5/vmlinux "
-
-        # status, self.file_name, _, _ = addr2line(inst_addr, db_config, bin_name)
-        # self.func_name = ida.get_func_name(inst_addr, bin_ida_server)
-        # # func_name is '' if not found in IDA, we make CFGs be empty then.
-        
-        # self.IR_cfg  = icfg.IR_CFG(self.file_name, self.func_name, db_config)
-        # self.bin_cfg = bcfg.bin_CFG(self.file_name, self.func_name, inst_addr, bin_ida_server)
         super().__init__(inst_addr, db_config, bin_ida_server, bin_name)
         self.IR_graphwithfea = add_fea_to_graph(self.IR_cfg.graph,self.IR_cfg.node_features_map)
         self.bin_graphwithfea = add_fea_to_graph(self.bin_cfg.graph,self.bin_cfg.node_features_map)
+    def nor_bin(self):
+        change_hex_to_dec(self)
 
-count = 0
 def add_fea_to_graph(G,feadic):
     for node in G.nodes:
         # print(node)
         G.nodes[node]['fea'] = feadic.setdefault(node,[])
         G.nodes[node]['label'] = node + '\n' + str(G.nodes[node]['fea'])
     return G
+
+#imm fea in bin is hex,change it to dec 
+def change_hex_to_dec(mapobj):
+    for node in mapobj.bin_graphwithfea.nodes:
+        if mapobj.bin_graphwithfea.nodes[node]['fea']:
+            for feat in mapobj.bin_graphwithfea.nodes[node]['fea']:
+                if '0x' in feat or '2900' in feat:
+                    immfea = feat.split('L')[0]
+                    memu = feat.split(' ')[0]
+                    value = int(immfea.split(' ')[1],16)
+                    if 'ffffffff' in feat:
+                        value = int(immfea.split(' ')[1],16) - int('0xffffffffffffffff',16) - 1
+                    
+                    newfea = memu + ' ' + str(value)
+                    # print (newfea)
+                    mapobj.bin_graphwithfea.nodes[node]['fea'].remove(feat)
+                    mapobj.bin_graphwithfea.nodes[node]['fea'].insert(0,newfea)
+                if feat == 'test0':
+                    mapobj.bin_graphwithfea.nodes[node]['fea'].remove(feat)
+                    mapobj.bin_graphwithfea.nodes[node]['fea'].insert(0,'cmp 0')
 
 def fea_in_list(fea,fealist):
     if fealist:
@@ -72,9 +75,22 @@ def map_with_dbgif(filename , funcname , label , addr, db_config):
     if cross:
         return 1
 
+def draw_IR_bin(mapobj):
+        A = nx.nx_agraph.to_agraph(mapobj.bin_graphwithfea)
+
+        A.layout('dot')
+        A.draw( this_path + '/graphs/bin-' + mapobj.func_name + '.png')
+
+        B = nx.nx_agraph.to_agraph(mapobj.IR_graphwithfea)
+
+        B.layout('dot')
+
+        B.draw( this_path + '/graphs/IR-' + mapobj.func_name + '.png')
+
 def test(addr):
    
     testmap = easymap(addr)
+    testmap.nor_bin()
     # for node in testmap.IR_graphwithfea.nodes:
     #     print (node,testmap.IR_graphwithfea.nodes[node]['fea'])
     # print ('\n')
@@ -84,101 +100,14 @@ def test(addr):
     _, file_name, _, _ = mapbb.addr2line(addr, db_config, bin_name=None)
     filename = file_name
     funcname = testmap.func_name
-    def add_IR_fea():
-        testmap.IR_graphwithfea.nodes['106']['fea'] = ['cmp 4']
-        testmap.IR_graphwithfea.nodes['108']['fea'] = ['test 16']
-        testmap.IR_graphwithfea.nodes['116']['fea'] = ['and 7','and 10496','shl 4','and 8388608','test 8192']
-        testmap.IR_graphwithfea.nodes['112']['fea'] = ['call __execute_only_pkey','cmov']
-        testmap.IR_graphwithfea.nodes['135']['fea'] = ['call can_do_mlock']
-        testmap.IR_graphwithfea.nodes['137']['fea'] = ['test 8192']
-        testmap.IR_graphwithfea.nodes['140']['fea'] = ['shr 12','cmp 2 reg']
-        testmap.IR_graphwithfea.nodes['152']['fea'] = ['test0']
-        testmap.IR_graphwithfea.nodes['14']['fea'] = ['test 1']
-        testmap.IR_graphwithfea.nodes['29']['fea'] = ['shr 16','and 16']
-        testmap.IR_graphwithfea.nodes['154']['fea'] = ['and -4096','cmp -32768','cmp 24576','cmp -16384']
-        testmap.IR_graphwithfea.nodes['264']['fea'] = ['cmp 1','cmp 2']
-        testmap.IR_graphwithfea.nodes['160']['fea'] = ['shr 13','and 1','add -1']
-        testmap.IR_graphwithfea.nodes['167']['fea'] = ['test0','cmp 2 reg']
-        testmap.IR_graphwithfea.nodes['172']['fea'] = ['shr 12']
-        testmap.IR_graphwithfea.nodes['22']['fea'] = ['test 0']
-        testmap.IR_graphwithfea.nodes['176']['fea'] = ['and 15','cmp 1','cmp 3','cmp 2']
-        testmap.IR_graphwithfea.nodes['186']['fea'] = ['and 2080897395']
-        testmap.IR_graphwithfea.nodes['241']['fea'] = ['test 1']
-        testmap.IR_graphwithfea.nodes['193']['fea'] = ['test 2']
-        testmap.IR_graphwithfea.nodes['196']['fea'] = ['test 2']
-        testmap.IR_graphwithfea.nodes['210']['fea'] = ['test 4']
-        testmap.IR_graphwithfea.nodes['215']['fea'] = ['test 2']
-        testmap.IR_graphwithfea.nodes['220']['fea'] = ['and 64','cmp 0','and 1032','cmp 1024']
-        testmap.IR_graphwithfea.nodes['27']['fea'] = ['or 4']
-        testmap.IR_graphwithfea.nodes['233']['fea'] = ['or 248','cmov']
-        testmap.IR_graphwithfea.nodes['250']['fea'] = ['test 4']
-        testmap.IR_graphwithfea.nodes['255']['fea'] =  ['cmp 0']
-        testmap.IR_graphwithfea.nodes['253']['fea'] = ['and -65']
-        testmap.IR_graphwithfea.nodes['261']['fea'] = ['test 256']
-        testmap.IR_graphwithfea.nodes['266']['fea'] = ['test 256']
-        testmap.IR_graphwithfea.nodes['271']['fea'] = ['shr 12']
-        testmap.IR_graphwithfea.nodes['269']['fea'] = ['or 248']
-        testmap.IR_graphwithfea.nodes['279']['fea'] = ['or 2097152']
-        testmap.IR_graphwithfea.nodes['291']['fea'] = ['call mmap_region','cmp -4096']
-        testmap.IR_graphwithfea.nodes['36']['fea'] = ['and -4096']
-        testmap.IR_graphwithfea.nodes['295']['fea'] = ['and 98304','cmp 32768']
-        testmap.IR_graphwithfea.nodes['42']['fea'] = ['add 4095','and -4096']
-        testmap.IR_graphwithfea.nodes['50']['fea'] = ['shr 12']
-        testmap.IR_graphwithfea.nodes['62']['fea'] = ['test 1048576']
-        testmap.IR_graphwithfea.nodes['68']['fea'] = ['test0']
-        testmap.IR_graphwithfea.nodes['89']['fea'] = ['test0']
-        testmap.IR_graphwithfea.nodes['96']['fea'] = ['test0']
-
-        testmap.IR_graphwithfea.nodes['9']['fea'] = ['cmp 2 reg', 'cmp 0']
-        testmap.IR_graphwithfea.nodes['85']['fea'] = []
-        testmap.IR_graphwithfea.nodes['87']['fea'] = []
-        testmap.IR_graphwithfea.nodes['72']['fea'] = ['cmp 2 reg']
-        testmap.IR_graphwithfea.nodes['59']['fea'] = ['call get_unmapped_area', 'cmp 2 reg', 'cmp -4096']
-        testmap.IR_graphwithfea.nodes['54']['fea'] = ['cmp 2 reg']
-        testmap.IR_graphwithfea.nodes['45']['fea'] = ['cmp 2 reg', 'cmp 0',  'add 4095', 'and-4096']
-        testmap.IR_graphwithfea.nodes['284']['fea'] = ['cmp 2 reg']
-        testmap.IR_graphwithfea.nodes['273']['fea'] = ['cmp 2 reg', 'cmp 0','test 16384']
-        testmap.IR_graphwithfea.nodes['247']['fea'] = ['call path_noexec']
-        testmap.IR_graphwithfea.nodes['230']['fea'] = ['call locks_mandatory_locked', 'cmp 2 reg', 'cmp 0']
-        testmap.IR_graphwithfea.nodes['24']['fea'] = ['call path_noexec']
-        testmap.IR_graphwithfea.nodes['201']['fea'] = ['cmp 2 reg', 'cmp 0']
-        testmap.IR_graphwithfea.nodes['188']['fea'] = ['cmp 2 reg', 'cmp 0']
-        testmap.IR_graphwithfea.nodes['183']['fea'] = []
-        testmap.IR_graphwithfea.nodes['17']['fea'] = ['cmp 2 reg', 'cmp 0']
-        testmap.IR_graphwithfea.nodes['302']['fea'] = []
-        testmap.IR_graphwithfea.nodes['100']['fea'] = ['cmp 2 reg']
-        
         # for node in testmap.IR_graphwithfea.nodes:
         #     print (node,testmap.IR_graphwithfea.nodes[node]['fea'])
     # add_IR_fea()
 
-    #imm fea in bin is hex,let's change it to dec
-    def change_hex_to_dec():
-        for node in testmap.bin_graphwithfea.nodes:
-                if testmap.bin_graphwithfea.nodes[node]['fea']:
-                    for feat in testmap.bin_graphwithfea.nodes[node]['fea']:
-                        if '0x' in feat or '2900' in feat:
-                            immfea = feat.split('L')[0]
-                            memu = feat.split(' ')[0]
-                            value = int(immfea.split(' ')[1],16)
-                            if 'ffffffff' in feat:
-                                value = int(immfea.split(' ')[1],16) - int('0xffffffffffffffff',16) - 1
-                            
-                            newfea = memu + ' ' + str(value)
-                            # print (newfea)
-                            testmap.bin_graphwithfea.nodes[node]['fea'].remove(feat)
-                            testmap.bin_graphwithfea.nodes[node]['fea'].insert(0,newfea)
-                        if feat == 'test0':
-                            testmap.bin_graphwithfea.nodes[node]['fea'].remove(feat)
-                            testmap.bin_graphwithfea.nodes[node]['fea'].insert(0,'cmp 0')
-                    # print (testmap.bin_graphwithfea.nodes[node]['fea'])
-                    
-    change_hex_to_dec()
-
+    #imm fea in bin is hex,let's change it to dec          
 
     IR_edgewith_fea = {}
     bin_edgewith_fea = {}
-
 
     def add_fea_to_edge():
         for node in testmap.IR_graphwithfea.edges:
@@ -278,27 +207,6 @@ def test(addr):
                     flag4 = 1
                     continue
 
-                # if fea_in_list('call',map_two_BB(binnodefea0,IRnodefea0)):
-                #     if [edge,key] in cormap:
-                #         continue
-                #     else:
-                #         if not flag1 == flag2 == flag3 == 0:
-                #             continue
-                #         if len(map_two_BB(binnodefea1,IRnodefea1)) == len(IRnodefea1):
-                #             cormap.append([edge,key])
-                #             flag4 = 1
-                #             continue
-
-                # if fea_in_list('call',map_two_BB(binnodefea1,IRnodefea1)):
-                #     if [edge,key] in cormap:
-                #         continue
-                #     else:
-                #         if not flag1 == flag2 == flag3 == flag4 == 0:
-                #             continue
-                #         if len(map_two_BB(binnodefea0,IRnodefea0)) == len(IRnodefea0):
-                #             cormap.append([edge,key])
-                #             continue
-
                 if fea_in_list('cmov',map_two_BB(binnodefea0,IRnodefea0)) or fea_in_list('cmov',map_two_BB(binnodefea1,IRnodefea1)):
                     if [edge,key] in cormap:
                         continue
@@ -369,22 +277,6 @@ def test(addr):
                     flag4 = 1
                     continue
 
-                # if fea_in_list('call',map_two_BB(binnodefea0,IRnodefea0)):
-                #     if [key,edge] in corremap:
-                #         continue
-                #     else:
-                #         if len(map_two_BB(binnodefea1,IRnodefea1)) == len(IRnodefea1):
-                #             corremap.append([key,edge])
-                #             continue
-
-                # if fea_in_list('call',map_two_BB(binnodefea1,IRnodefea1)):
-                #     if [key,edge] in corremap:
-                #         continue
-                #     else:
-                #         if len(map_two_BB(binnodefea0,IRnodefea0)) == len(IRnodefea0):
-                #             corremap.append([key,edge])
-                #             continue
-
                 if fea_in_list('cmov',map_two_BB(binnodefea0,IRnodefea0)) or fea_in_list('cmov',map_two_BB(binnodefea1,IRnodefea1)):
                     if [key,edge] in corremap:
                         continue
@@ -406,14 +298,14 @@ def test(addr):
 
         for node in correctmap:
             if not node[1][0] in mapped_IRnode.setdefault(node[0][0],[]):
-                mapped_IRnode.setdefault(node[0][0],[]).append(node[1][0])
+                mapped_IRnode[node[0][0]].append(node[1][0])
             if not node[1][1] in mapped_IRnode.setdefault(node[0][1],[]):
-                mapped_IRnode.setdefault(node[0][1],[]).append(node[1][1])
+                mapped_IRnode[node[0][1]].append(node[1][1])
 
             if not node[0][0] in mapped_binnode.setdefault(node[1][0],[]):
-                mapped_binnode.setdefault(node[1][0],[]).append(node[0][0])
+                mapped_binnode[node[1][0]].append(node[0][0])
             if not node[0][1] in mapped_binnode.setdefault(node[1][1],[]):
-                mapped_binnode.setdefault(node[1][1],[]).append(node[0][1])
+                mapped_binnode[node[1][1]].append(node[0][1])
   
         #the first bb and the ret bb is mapped
         intlabel = []
@@ -421,6 +313,7 @@ def test(addr):
         binret = 0
         # print(111)
         # print(testmap.IR_graphwithfea.nodes.keys())
+     
         for node in testmap.IR_graphwithfea.nodes.keys():
             # print(1)
             # print(node)
@@ -430,14 +323,14 @@ def test(addr):
             intaddr.append(int(node,16))
             if 'retn' in testmap.bin_graphwithfea.nodes[node]['fea']:
                 binret = node
+   
         IRret = str(max(intlabel))
         IRstart = str(min(intlabel))
         binstart = str(hex(min(intaddr)))
         if binret != 0:
             mapped_IRnode.setdefault(IRret,[]).append(binret)
         if not binstart in mapped_IRnode.setdefault(IRstart,[]):
-            mapped_IRnode.setdefault(IRstart,[]).append(binstart)
-
+            mapped_IRnode[IRstart].append(binstart)
         mapped_binnode.setdefault(binstart,[]).append(IRstart)
         mapped_binnode.setdefault(binret,[]).append(IRret)
 
@@ -469,9 +362,9 @@ def test(addr):
             # print ('\n')
         # for node in testmap.IR_graphwithfea.nodes:
         #     print(node,testmap.IR_graphwithfea.nodes[node]['fea'])
-        for node in mapped_IRnode.items():
-            print (node)
-            print ('\n')
+        # for node in mapped_IRnode.items():
+        #     print (node)
+        #     print ('\n')
         # len1 = 30 - len(testmap.func_name)
         # noom = ' '
         # for i in range(0,len1):
@@ -497,28 +390,8 @@ def test(addr):
         #         print('\n')
         
         # print(len(edgedict.keys()))
-
-
-        # for node in mapped_edge:
-        #     print (node)
-        #     print (IR_edgewith_fea[node[0]])
-        #     print (bin_edgewith_fea[node[1]])
-        #     print ('\n')
-        # print (len(mapped_edge))
     cmp_edgewithfea()
-   
-    #take debug_info into account
 
-    # def map_with_debuginfo():
-    #     mapped_IR_bin_BB = dbgif.cmp_distinct_bbs_in_f(testmap.file_name, testmap.func_name, testmap.bin_cfg.graph.nodes, db_config)
-    #     for item in mapped_IR_bin_BB.items():
-    #         print (item)
-    #     print(mapped_IR_bin_BB)
-    # map_with_debuginfo()
-
-
-    # real_f_path = os.path.realpath(__file__)
-    # this_path = real_f_path[:real_f_path.rfind('/')]
     IRmaplist = []
     binmaplist = []
     for node in testmap.IR_graphwithfea.nodes.keys():
@@ -748,8 +621,8 @@ def test(addr):
                     mapped_binnode.setdefault(dict2[node3][0],[]).append(node3)
         # test code
         # print('mapafteredge')
-        for node in mapped_IRnode.items():
-            print(node)
+        # for node in mapped_IRnode.items():
+        #     print(node)
             # print(node,dict)
         # print(count3,count1,count2)
     map_after_edge()
@@ -782,19 +655,7 @@ def test(addr):
             testmap.bin_graphwithfea.nodes[addr]['mapped'] = 1
             testmap.bin_graphwithfea.nodes[addr]['color'] = 'green'
 
-
-    def draw_IR_bin():
-        A = nx.nx_agraph.to_agraph(testmap.bin_graphwithfea)
-
-        A.layout('dot')
-        A.draw( this_path + '/graphs/bin-' + testmap.func_name + '.png')
-
-        B = nx.nx_agraph.to_agraph(testmap.IR_graphwithfea)
-
-        B.layout('dot')
-
-        B.draw( this_path + '/graphs/IR-' + testmap.func_name + '.png')
-    draw_IR_bin()
+    draw_IR_bin(testmap)
 
     # print(mapped_binnode.keys())
     return(len(mapped_IRnode.keys())/len(testmap.IR_graphwithfea.nodes),len(mapped_binnode.keys())/len(testmap.bin_graphwithfea.nodes),mapped_IRnode,testmap.func_name)
@@ -910,44 +771,50 @@ def test_821(addrfile,sechkfile):
 # test_821('/home/seclab/dingzhu/sechk-namei-addr.txt','/home/seclab/dingzhu/sechk-namei.txt')
 # test_821('/home/seclab/dingzhu/sechk-inline-addr.txt','/home/seclab/dingzhu/sechk-inode.txt')
 
-    # count = count + 1
-# test_feabbnum(0xffffffff811cc210)
-# test_feabbnum(0xffffffff811cc210)
-# putname
-# test(0xffffffff81219140)
-# test(0xffffffff811cb3dd)
-# test(0xffffffff811cc210)
-# test(0xffffffff811cca70)
-# test(0xffffffff811cf5cc)
-# patn_openat
-# test(0xffffffff8121b4bb)
-# unwind_next_frame
-test(0xffffffff8105cc6d)
-# get_unmapped_area
-# test(0xffffffff811cc89c)
-# getname_flags
-# test(0xffffffff81218f84)
-# test(0xffffffff811cb425)
-# may_open
-# test(0xffffffff812205b0)
-# free_debug_processing
-# test(0xffffffff811ff60e)
 
-# error test
-# test(0xffffffff8121f510)
-# test(0xffffffff811fbc80)
-# test(0xffffffff811c2a10)(该函数在bin只有一个BB，导致通过edge构造边时该图为空)
-# test(0xffffffff811c1340)(该函数在bin只有一个BB，导致通过edge构造边时该图为空)
-# test(0xffffffff811c3000)
-# test(0xffffffff812d3d40)(ida解析得到的函数名有问题)
-# test(0xffffffff812d52c0)
-# test(ext4_iomap_end)(IR中只有一个BB，bin也是)
-# def map_graph(IR_graph,bin_graph):
-#     #map start from the first block
-#     mapwithfea = easymap(addr)
-#     def map_graph_from_node(irnode,binnode):
-        
+def main():
+        # count = count + 1
+    # test_feabbnum(0xffffffff811cc210)
+    # test_feabbnum(0xffffffff811cc210)
+    # putname
+    # test(0xffffffff81219140)
+    # test(0xffffffff811cb3dd)
+    test(0xffffffff811cc210)
+    # test(0xffffffff811cca70)
+    # test(0xffffffff811cf5cc)
+    # patn_openat
+    # test(0xffffffff8121b4bb)
+    # unwind_next_frame
+    # test(0xffffffff8105cc6d)
+    # get_unmapped_area
+    # test(0xffffffff811cc89c)
+    # getname_flags
+    # test(0xffffffff81218f84)
+    # test(0xffffffff811cb425)
+    # may_open
+    # test(0xffffffff812205b0)
+    # free_debug_processing
+    # test(0xffffffff811ff60e)
+    # unmap_vmas
+    # test(0xffffffff811c25d3)
+    # error test
+    # test(0xffffffff8121f510)
+    # test(0xffffffff811fbc80)
+    # test(0xffffffff811c2a10)(该函数在bin只有一个BB，导致通过edge构造边时该图为空)
+    # test(0xffffffff811c1340)(该函数在bin只有一个BB，导致通过edge构造边时该图为空)
+    # test(0xffffffff811c3000)
+    # test(0xffffffff812d3d40)(ida解析得到的函数名有问题)
+    # test(0xffffffff812d52c0)
+    # test(ext4_iomap_end)(IR中只有一个BB，bin也是)
+    # def map_graph(IR_graph,bin_graph):
+    #     #map start from the first block
+    #     mapwithfea = easymap(addr)
+    #     def map_graph_from_node(irnode,binnode):
+            
 
-# testmap1 = easymap(0xffffffff812d52c0)
-# print(testmap1.IR_graphwithfea.nodes.keys())
-# print(testmap1.func_name)
+    # testmap1 = easymap(0xffffffff812d52c0)
+    # print(testmap1.IR_graphwithfea.nodes.keys())
+    # print(testmap1.func_name)
+
+if __name__ == "__main__":
+    main()
